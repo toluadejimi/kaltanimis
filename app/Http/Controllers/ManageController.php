@@ -169,10 +169,20 @@ class ManageController extends Controller
             # code...
             $t = FactoryTotal::where('factory_id',$items->factory_id)->first();
             $t->decrement('recycled',$items->item_weight_input);
+            $t->decrement('flesk',$items->item_weight_output);
         }
         //dd($rcy,$trans,$items->item_weight_input);
-        $total = Total::where('location_id',$trans->location_id)->first();
-        $total->update(['transfered' => ($total->transfered + $items->item_weight_input)]);
+        $total = RecyclesDetails::where('location_id',$rcy->location_id)->first();
+        $total->update(['Clean_Clear' => ($updated->Clean_Clear - $rcy->Clean_Clear ?? 0)]);
+        $total->update(['Green_Colour' => ($updated->Green_Colour  - $rcy->Green_Colour ?? 0)]);
+        $total->update(['Others' => ($updated->Others - $rcy->Others ?? 0)]);
+        $total->update(['Trash' => ($updated->Trash - $rcy->Trash ?? 0)]);
+
+        $updated = TransferDetails::where('location_id', $rcy->factory_id)->first();
+        $updated->update(['Clean_Clear' => ($updated->Clean_Clear - $rcy->Clean_Clear ?? 0)]);
+        $updated->update(['Green_Colour' => ($updated->Green_Colour - $rcy->Green_Colour ?? 0)]);
+        $updated->update(['Others' => ($updated->Others - $rcy->Others ?? 0)]);
+        $updated->update(['Trash' => ($updated->Trash - $rcy->Trash ?? 0)]);
 
         $items->delete();
         return back()->with('message', 'Deleted Successfully');

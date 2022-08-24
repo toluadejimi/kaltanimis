@@ -20,12 +20,31 @@
                     <form action="/addrecycle" method="post" class="mb-4 ">
                         @csrf
                         <div class="row d-flex">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="">Weight in</label>
-                                    <input type="text" name="item_weight_input" class="form-control">
-                                </div>
+                           <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="">Clean Clear</label>
+                                        <input type="number" name="Clean_Clear" class="form-control" value="0" required>
+                                    </div>
                             </div>
+                            <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="">Green Colour</label>
+                                        <input type="number" name="Green_Colour" class="form-control" value="0" required>
+                                    </div>
+                            </div>
+                            <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="">Others</label>
+                                        <input type="number" name="Others" class="form-control" value="0" required>
+                                    </div>
+                            </div>
+                            <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="">Trash</label>
+                                        <input type="number" name="Trash" class="form-control" value="0" required>
+                                    </div>
+                            </div>
+
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label for="">Weight Out</label>

@@ -23,6 +23,7 @@ use App\Models\Recycle;
 use App\Models\UserRole;
 use App\Models\SortedTransfer;
 use App\Models\FactoryTotal;
+use App\Models\RecyclesDetails;
 use App\Models\SortDetailsHistory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -692,6 +693,30 @@ class MainController extends Controller
                             $updated->increment('Others', ($request->Others ?? 0));
                             $updated->increment('Trash' ,($request->Trash ?? 0));
                         }
+
+                        $sortcheck = BailedDetails::where('location_id', $request->factory_id)->first();
+                        if(empty($sortcheck))
+                        {
+                            $sortdetails = new BailedDetails();
+                            $sortdetails->Clean_Clear = $request->Clean_Clear ?? 0;
+                            $sortdetails->Green_Colour = $request->Green_Colour ?? 0;
+                            $sortdetails->Others = $request->Others ?? 0;
+                            $sortdetails->Trash = $request->Trash ?? 0;
+                            $sortdetails->Caps = $request->Caps ?? 0;
+                            $sortdetails->location_id = $request->factory_id;
+                            $sortdetails->user_id = Auth::id();
+                            $sortdetails->save();
+                            
+                        }else{
+
+                        $updated = BailedDetails::where('location_id', $request->factory_id)->first();
+                        $updated->update(['Clean_Clear' => ($updated->Clean_Clear + ($request->Clean_Clear ?? 0))]);
+                        $updated->update(['Green_Colour' => ($updated->Green_Colour +($request->Green_Colour ?? 0))]);
+                        $updated->update(['Others' => ($updated->Others + ($request->Others ?? 0))]);
+                        $updated->update(['Trash' => ($updated->Trash + ($request->Trash ?? 0))]);
+                        $updated->update(['Caps' => ($updated->Caps + ($request->Caps ?? 0))]);
+            
+                        }
                     
                         $updated = BailedDetails::where('location_id', $request->collection_id)->first();
                         //dd($updated->Clean_Clear);
@@ -699,6 +724,8 @@ class MainController extends Controller
                         $updated->decrement('Green_Colour', ($request->Green_Colour ?? 0));
                         $updated->decrement('Others', ($request->Others ?? 0));
                         $updated->decrement('Trash' ,($request->Trash ?? 0));
+
+                        
     
                    
                     
@@ -889,22 +916,66 @@ class MainController extends Controller
 
     public function recycle(Request $request)
     {
-
+        
         $trans = Transfer::where('factory_id',$request->factory_id)->first();
-        if($trans == null){
+        if(empty($trans)){
             return back()->with('error', 'No Transfer Found');
         }
-        $total = Total::where('location_id',$trans->location_id)->first();
-        if ($total->transfered == 0) {
+        $total = BailedDetails::where('location_id',$request->factory_id)->first();
+        if (empty($total)) {
             return back()->with('error', 'No Transfer  Found');
-        }elseif ($request->item_weight_input > $total->transfered) {
-            return back()->with('error', 'No Transfer Found');
         }
+        
+        $tall = ($total->Clean_Clear + $total->Others + $total->Green_Colour + $total->Trash);
+        if ($request->item_weight_input > $tall) {
+            return back()->with('error', 'Insufficent Transfer');
+        }
+        $checkrecycle = RecyclesDetails::where('location_id',$request->factory_id)->first();
+        if ($request->Clean_Clear > $total->Clean_Clear) {
+
+            return back()->with('error','Insufficent Clean Clear');
+
+        }elseif ($request->Green_Colour > $total->Green_Colour) {
+            return back()->with('error','Insufficent Green Colour');
+        }elseif ($request->Others > $total->Others) {
+            return back()->with('error','Insufficent Others');
+        }elseif ($request->Trash > $total->Trash) {
+            return back()->with('error','Insufficent Trash');
+        }
+        if (empty($checkrecycle)) {
+            $ry = new RecyclesDetails();
+            $ry->Clean_Clear = $request->Clean_Clear ?? 0;
+            $ry->Green_Colour = $request->Green_Colour ?? 0;
+            $ry->Others = $request->Others ?? 0;
+            $ry->Trash = $request->Trash ?? 0;
+            $ry->location_id = $request->factory_id;
+            $ry->save();
+        }else{
+            $updated = RecyclesDetails::where('location_id', $request->factory_id)->first();
+            $updated->update(['Clean_Clear' => ($updated->Clean_Clear + $request->Clean_Clear ?? 0)]);
+            $updated->update(['Green_Colour' => ($updated->Green_Colour +$request->Green_Colour ?? 0)]);
+            $updated->update(['Others' => ($updated->Others + $request->Others ?? 0)]);
+            $updated->update(['Trash' => ($updated->Trash + $request->Trash ?? 0)]);
+
+
+        }
+        $updated = BailedDetails::where('location_id', $request->factory_id)->first();
+        $updated->update(['Clean_Clear' => ($updated->Clean_Clear - $request->Clean_Clear ?? 0)]);
+        $updated->update(['Green_Colour' => ($updated->Green_Colour - $request->Green_Colour ?? 0)]);
+        $updated->update(['Others' => ($updated->Others - $request->Others ?? 0)]);
+        $updated->update(['Trash' => ($updated->Trash - $request->Trash ?? 0)]);
+
+
+        $weightIn = ($request->Clean_Clear + $request->Green_Colour + $request->Others + $request->Trash);
         $recycle = Recycle::create([
-            "item_weight_input" => $request->item_weight_input ?? 0,
+            "item_weight_input" => $weightIn ?? 0,
             "costic_soda" => $request->costic_soda ?? 0,
             "detergent" => $request->detergent ?? 0,
             "item_weight_output" => $request->item_weight_output ?? 0,
+            "Clean_Clear" => $request->Clean_Clear ?? 0,
+            "Green_Colour" => $request->Green_Colour ?? 0,
+            "Others" => $request->Others ?? 0,
+            "Trash" => $request->Trash ?? 0,
             "factory_id"    => $request->factory_id,
             "user_id" => Auth::id(),
             
@@ -915,15 +986,17 @@ class MainController extends Controller
         $factory_id = $request->factory_id;
 
         
-        $total->update(['transfered' => ($total->transfered - $request->item_weight_input)]);
+       
 
         if (FactoryTotal::where('factory_id',$factory_id)->exists()) {
             # code...
             $t = FactoryTotal::where('factory_id',$factory_id)->first();
-            $t->increment('recycled', $recycled);
+            $t->update(['recycled' => ($t->recycled + $recycled)]);
+            $t->update(['flesk' => ($t->flesk + $request->item_weight_output)]);
         }else{
             $total = new  FactoryTotal();
-            $total->recycled = $recycled;
+            $total->recycled = $recycled ?? 0;
+            $total->flesk = $request->item_weight_output ?? 0;
             $total->factory_id = $request->factory_id;
             //dd($total);
             $total->save();
@@ -972,6 +1045,7 @@ class MainController extends Controller
                 $t = FactoryTotal::where('factory_id',$factory_id)->first();
                 $t->increment('sales', $sales);
                 $t->decrement('recycled', $weight);
+                $t->decrement('flesk', $weight);
             }else{
                 $total = new  FactoryTotal();
                 $total->sales = $sales;

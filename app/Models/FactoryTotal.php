@@ -11,6 +11,7 @@ class FactoryTotal extends Model
 
     protected $fillable = [
         'recycled',
-        'sales'
+        'sales',
+        'flesk'
     ];
 }
